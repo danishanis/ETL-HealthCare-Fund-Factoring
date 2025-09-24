@@ -1,0 +1,11 @@
+pyspark==3.5.1
+pandas>=2.2
+pyyaml>=6.0
+SQLAlchemy>=2.0
+psycopg2-binary>=2.9
+duckdb>=1.0.0
+prefect==2.14.10
+pytest>=8.0
+great_expectations>=0.18
+loguru>=0.7
+-e .
