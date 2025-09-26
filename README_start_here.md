@@ -1,5 +1,9 @@
 # Senior Data Engineer Take‑Home (Factoring Fund ETL MVP)
 
+This project involves creating an ETL pipelie using Apache Airflow. The pipeline extracts data from ... (Add transformation details here)... and loads it into a Postgres database. The entire workflow is orchestrated by Airflow, a platform that allows scheduling, monitoring and managing workflows.
+
+The project leverages Docker to run Airflow and Postgres as services, ensuring an isloated and reproducible environment. 
+
 This folder only contains sample data and a minimal Docker/Python scaffold. The full assignment brief is in the document you received.
 
 ## Structure
