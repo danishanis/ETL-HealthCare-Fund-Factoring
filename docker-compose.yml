@@ -1,18 +1,32 @@
 version: "3.9"
 services:
-  db:
-    image: postgres:15
+  postgres:
+    image: postgres:13
+    container_name: postgres_db
     environment:
-      POSTGRES_DB: factoring
-      POSTGRES_USER: factoring
-      POSTGRES_PASSWORD: factoring
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5434:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U factoring -d factoring"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - airflow_network ##
+  
+# Common for all services to interact with 
+networks: # Compose creates a new network if it doesnt exist
+  airflow_network: ##
+    external: false
+
+volumes: # Compose creates new volumes if it doesnt exist
+  postgres_db:
+
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready -U factoring -d factoring"]
+    #   interval: 5s
+    #   timeout: 3s
+    #   retries: 20
   app:
     build: .
     volumes:
