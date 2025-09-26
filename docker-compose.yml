@@ -27,16 +27,18 @@ volumes: # Compose creates new volumes if it doesnt exist
     #   interval: 5s
     #   timeout: 3s
     #   retries: 20
-  app:
-    build: .
-    volumes:
-      - ./:/app
-    environment:
-      - DATABASE_URL=postgresql+psycopg2://factoring:factoring@db:5432/factoring
-      - PREFECT_API_URL=http://localhost:4200/api
-      - TZ=America/Toronto
-    depends_on:
-      db:
-        condition: service_healthy
-    command: >
-      bash -lc "python etl/run_once.py"
+  
+  
+  # app:
+  #   build: .
+  #   volumes:
+  #     - ./:/app
+  #   environment:
+  #     - DATABASE_URL=postgresql+psycopg2://factoring:factoring@db:5432/factoring
+  #     - PREFECT_API_URL=http://localhost:4200/api
+  #     - TZ=America/Toronto
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   command: >
+  #     bash -lc "python etl/run_once.py"
