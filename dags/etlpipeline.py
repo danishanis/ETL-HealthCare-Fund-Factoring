@@ -5,6 +5,11 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook # To insert d
 from airflow.utils.dates import days_ago
 import json
 
+import pandas as pd
+from configurations.config import cfg
+
+logger = cfg().get_logger()
+
 with DAG(
     dag_id='etl_healthcare_factoring_postgres',
     start_date=days_ago(1), # scheduling daily run
@@ -15,13 +20,16 @@ with DAG(
     # Step 1: Create a table if it does not exist
 
     @task
-    def create_table():
+    def create_raw_tables():
+
+        logger.info("creating empty raw tables...")
+        
         # initializing Postgreshook (to interact with Postgres SQL)
         postgres_hook = PostgresHook(
             postgre_conn_id="my_postgres_connection"
         )
 
-        create_table_query = """
+        create_raw_table_query = """
         CREATE TABLE IF NOT EXISTS raw_facilities (
             facility_id SERIAL PRIMARY KEY,
             counter_party_name VARCHAR(255),
@@ -33,7 +41,7 @@ with DAG(
             currency VARCHAR(3)
         );
 
-        CREATE TABLE IF NOT EXISTS policy_commissions (
+        CREATE TABLE IF NOT EXISTS raw_policy_commissions (
             policy_id VARCHAR(50) PRIMARY KEY,
             facility_id VARCHAR(50) REFERENCES raw_facilities(facility_id),
             insurer VARCHAR(100),
@@ -49,19 +57,48 @@ with DAG(
 
 
         CREATE TABLE IF NOT EXISTS raw_bank_transactions (
-            id SERIAL PRIMARY KEY,
-            transaction_id VARCHAR(50),
-            amount NUMERIC,
-            transaction_date DATE
+            txn_id VARCHAR(50) PRIMARY KEY,
+            date DATE NOT NULL,
+            amount NUMERIC NOT NULL,
+            currency VARCHAR(3) NOT NULL,
+            description TEXT,
+            account_id VARCHAR(50)
         );
+
 
         """
         
         # Executing table creation query
-        postgres_hook.run(create_table_query)
+        postgres_hook.run(create_raw_table_query)
 
 
     # Step 2: Extract date from source (Could be an API or repository folder)
+    @task
+    def loading_raw_data():
+        
+        logger.info("loading input csv files to raw tables...")
+        
+        # initializing Postgreshook (to interact with Postgres SQL)
+        postgres_hook = PostgresHook(
+            postgre_conn_id="my_postgres_connection"
+        )
+
+        facilities_df = pd.read_csv('data/facilities.csv')
+        facilities_df.to_sql('raw_facilities', 
+                             postgres_hook.get_sqlalchemy_engine(),
+                             if_exists='replace', index=False)
+        
+        commissions_df = pd.read_csv('data/policy_commissions.csv')
+        commissions_df.to_sql('raw_policy_commissions', 
+                             postgres_hook.get_sqlalchemy_engine(),
+                             if_exists='replace', index=False)
+        
+        transactions_df = pd.read_csv('data/raw_bank_transactions.csv')
+        transactions_df.to_sql('raw_bank_transactions', 
+                             postgres_hook.get_sqlalchemy_engine(),
+                             if_exists='replace', index=False)
+        
+        logger.info("Raw data loaded into Postgres")
 
 
     # Step 3: Transform data
