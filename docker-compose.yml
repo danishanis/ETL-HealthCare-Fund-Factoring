@@ -32,78 +32,78 @@ x-airflow-common: &airflow-common
     postgres:
       condition: service_healthy
 
-  services:
-    postgres:
-      image: postgres:16
-      container_name: postgres
-      restart: unless-stopped
-      environment:
-        POSTGRES_USER: ${POSTGRES_SUPERUSER}
-        POSTGRES_PASSWORD: ${POSTGRES_SUPERPASS}
-        POSTGRES_DB: postgres
-      ports:
-        - "5432:5432"
-      volumes:
-        - pgdata:/var/lib/postgresql/data
-        - ./db/init:/docker-entrypoint-initdb.d
-      healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d postgres"]
-        interval: 5s
-        timeout: 5s
-        retries: 10
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERPASS}
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   
-    airflow-init:
-      <<: *airflow-common
-      container_name: airflow-init
-      entrypoint: /bin/bash
-      command: >
-        -c "
-        pip install --no-cache-dir ${_PIP_ADDITIONAL_REQUIREMENTS} &&
-        airflow db upgrade &&
-        airflow users create
-          --username ${AIRFLOW_ADMIN_USERNAME}
-          --firstname Admin
-          --lastname User
-          --role Admin
-          --email admin@example.com
-          --password ${AIRFLOW_ADMIN_PASSWORD} || true &&
-          
-        # Add the warehouse connection for DAG tasks
-        airflow connections add postgres_warehouse
-          --conn-uri postgresql+psycopg2://${WAREHOUSE_DB_USER}:${WAREHOUSE_DB_PASSWORD}@postgres:5432/${WAREHOUSE_DB_NAME} || true
-        "
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    entrypoint: /bin/bash
+    command: >
+      -c "
+      pip install --no-cache-dir ${_PIP_ADDITIONAL_REQUIREMENTS} &&
+      airflow db upgrade &&
+      airflow users create
+        --username ${AIRFLOW_ADMIN_USERNAME}
+        --firstname Admin
+        --lastname User
+        --role Admin
+        --email ${AIRFLOW_ADMIN_EMAIL}
+        --password ${AIRFLOW_ADMIN_PASSWORD} || true &&
         
-      volumes:
-        - ./airflow/dags:/opt/airflow/dags
-        - ./airflow/logs:/opt/airflow/logs
-        - ./airflow/include:/opt/airflow/include
-        - ./src:/opt/airflow/src
-        - ./data:/opt/airflow/data
+      # Add the warehouse connection for DAG tasks
+      airflow connections add postgres_warehouse
+        --conn-uri postgresql+psycopg2://${WAREHOUSE_DB_USER}:${WAREHOUSE_DB_PASSWORD}@postgres:5432/${WAREHOUSE_DB_NAME} || true
+      "
         
-    airflow-webserver:
-      <<: *airflow-common
-      container_name: airflow-webserver
-      command: webserver
-      ports:
-        - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/include:/opt/airflow/include
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
         
-    airflow-scheduler:
-      <<: *airflow-common
-      container_name: airflow-scheduler
-      command: scheduler
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+      
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
       
       
-    # Optional: uncomment if you want a UI to inspect Postgres
-    # pgadmin:
-    # image: dpage/pgadmin4:8
-    # environment:
-    # PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-    # PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-    # ports:
-    # - "5050:80"
-    # depends_on:
-    # postgres:
-    # condition: service_healthy
+  # Optional: uncomment if you want a UI to inspect Postgres
+  # pgadmin:
+  # image: dpage/pgadmin4:8
+  # environment:
+  # PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+  # PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+  # ports:
+  # - "5050:80"
+  # depends_on:
+  # postgres:
+  # condition: service_healthy
     
-  volumes:
-    pgdata:
+volumes:
+  pgdata:
