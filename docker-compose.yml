@@ -1,44 +1,109 @@
 version: "3.9"
-services:
-  postgres:
-    image: postgres:13
-    container_name: postgres_db
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - airflow_network ##
-  
-# Common for all services to interact with 
-networks: # Compose creates a new network if it doesnt exist
-  airflow_network: ##
-    external: false
 
-volumes: # Compose creates new volumes if it doesnt exist
-  postgres_db:
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.3
+  environment:
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
 
-    # healthcheck:
-    #   test: ["CMD-SHELL", "pg_isready -U factoring -d factoring"]
-    #   interval: 5s
-    #   timeout: 3s
-    #   retries: 20
+    # Airflow metadata DB (points to the "airflow" database)
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres:5432/${AIRFLOW_DB_NAME}
+    
+    # Executor & timezone
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__DEFAULT_TIMEZONE: America/Toronto
+    
+    # Admin bootstrap (for airflow-init only; harmless for others)
+    _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USERNAME}
+    _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
   
+    # Make sure we can install extras at container start
+    _PIP_ADDITIONAL_REQUIREMENTS: "psycopg2-binary==2.9.9 pandas==2.2.2 pyspark==3.5.1 rapidfuzz==3.9.6"
+
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/include:/opt/airflow/include
+    - ./src:/opt/airflow/src
+    - ./data:/opt/airflow/data
+
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+  services:
+    postgres:
+      image: postgres:16
+      container_name: postgres
+      restart: unless-stopped
+      environment:
+        POSTGRES_USER: ${POSTGRES_SUPERUSER}
+        POSTGRES_PASSWORD: ${POSTGRES_SUPERPASS}
+        POSTGRES_DB: postgres
+      ports:
+        - "5432:5432"
+      volumes:
+        - pgdata:/var/lib/postgresql/data
+        - ./db/init:/docker-entrypoint-initdb.d
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d postgres"]
+        interval: 5s
+        timeout: 5s
+        retries: 10
   
-  # app:
-  #   build: .
-  #   volumes:
-  #     - ./:/app
-  #   environment:
-  #     - DATABASE_URL=postgresql+psycopg2://factoring:factoring@db:5432/factoring
-  #     - PREFECT_API_URL=http://localhost:4200/api
-  #     - TZ=America/Toronto
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   command: >
-  #     bash -lc "python etl/run_once.py"
+    airflow-init:
+      <<: *airflow-common
+      container_name: airflow-init
+      entrypoint: /bin/bash
+      command: >
+        -c "
+        pip install --no-cache-dir ${_PIP_ADDITIONAL_REQUIREMENTS} &&
+        airflow db upgrade &&
+        airflow users create
+          --username ${AIRFLOW_ADMIN_USERNAME}
+          --firstname Admin
+          --lastname User
+          --role Admin
+          --email admin@example.com
+          --password ${AIRFLOW_ADMIN_PASSWORD} || true &&
+          
+        # Add the warehouse connection for DAG tasks
+        airflow connections add postgres_warehouse
+          --conn-uri postgresql+psycopg2://${WAREHOUSE_DB_USER}:${WAREHOUSE_DB_PASSWORD}@postgres:5432/${WAREHOUSE_DB_NAME} || true
+        "
+        
+      volumes:
+        - ./airflow/dags:/opt/airflow/dags
+        - ./airflow/logs:/opt/airflow/logs
+        - ./airflow/include:/opt/airflow/include
+        - ./src:/opt/airflow/src
+        - ./data:/opt/airflow/data
+        
+    airflow-webserver:
+      <<: *airflow-common
+      container_name: airflow-webserver
+      command: webserver
+      ports:
+        - "8080:8080"
+        
+    airflow-scheduler:
+      <<: *airflow-common
+      container_name: airflow-scheduler
+      command: scheduler
+      
+      
+    # Optional: uncomment if you want a UI to inspect Postgres
+    # pgadmin:
+    # image: dpage/pgadmin4:8
+    # environment:
+    # PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+    # PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    # ports:
+    # - "5050:80"
+    # depends_on:
+    # postgres:
+    # condition: service_healthy
+    
+  volumes:
+    pgdata:
