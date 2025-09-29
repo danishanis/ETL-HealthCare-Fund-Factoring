@@ -103,8 +103,8 @@ take-home/
 
 ### 1. Clone the repo
 ```bash
-git clone <your-repo-url> factoring-fund-etl
-cd factoring-fund-etl
+git clone https://github.com/danishanis/ETL-HealthCare-Fund-Factoring.git
+cd ETL-HealthCare-Fund-Factoring
 ```
 
 ### 2. Start Docker services
