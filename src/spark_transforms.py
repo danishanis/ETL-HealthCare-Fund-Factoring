@@ -4,7 +4,7 @@ from pyspark.sql.functions import abs as spark_abs, col
 def run_spark_bank_demo():
     spark = SparkSession.builder \
         .appName("BankTransactionsSparkDemo") \
-        .config("spark.jars", "/opt/spark/jars/postgresql-42.6.0.jar") \
+        .config("spark.jars", "/opt/jars/postgresql-42.6.0.jar") \
         .getOrCreate()
 
     jdbc_url = "jdbc:postgresql://postgres:5432/warehouse"
