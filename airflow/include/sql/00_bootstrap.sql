@@ -14,7 +14,7 @@ CREATE SCHEMA IF NOT EXISTS marts;
 DROP TABLE IF EXISTS raw.bank_transactions;
 CREATE TABLE raw.bank_transactions (
     txn_id        TEXT PRIMARY KEY,
-    date      DATE,
+    txn_date      DATE,
     amount        NUMERIC,
     currency      TEXT,
     description   TEXT,
@@ -53,7 +53,7 @@ CREATE TABLE raw.facilities (
 DROP TABLE IF EXISTS stg.bank_transactions_clean;
 CREATE TABLE stg.bank_transactions_clean (
     txn_id        TEXT PRIMARY KEY,
-    date      DATE,
+    txn_date      DATE,
     amount        NUMERIC(18,2),
     currency      TEXT,
     description   TEXT,
