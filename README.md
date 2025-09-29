@@ -1,4 +1,4 @@
-# Data Engineering Case-Study - Factoring Fund ETL MVP
+# Data Engineering Case Study - Factoring Fund ETL MVP
 
 This project implements an **ETL pipeline** for a factoring fund that advances cash against future insurance receivables. The pipeline ingests insurer/broker commission statements and bank transaction exports, reconciles expected vs received cash, computes borrowing base availability per facility, and produces exception reports for monitoring delinquencies.  
 
@@ -63,6 +63,10 @@ The pipeline follows a layered architecture:
    - `exceptions` — all mismatches (late, short, over-pay, unmatched).  
    - `run_audit` — record counts across all layers for auditability.  
 
+5. **PySpark integration**  
+   - A demo Spark task (`spark_bank_demo`) reads from `raw.bank_transactions`, applies a trivial transform, and writes into `stg.bank_txn_spark_demo`.  
+   - This runs in parallel with the main DAG flow to safely demonstrate Spark–Airflow–Postgres integration without risk to the core pipeline.  
+
 ---
 
 ## 📂 Repository Structure
@@ -86,11 +90,18 @@ take-home/
 │   ├── facilities.csv
 │   └── policy_commissions.csv
 │
+├── data/outputs/                    # Final exported CSVs (from marts)
+│
 ├── docs/
 │   └── factoring_etl_dag.png        # DAG graph screenshot from Airflow UI
 │
+├── jars/
+│   └── postgresql-42.6.0.jar        # JDBC driver for Spark–Postgres connectivity
+│
 ├── src/
-│   └── ingestion.py                 # CSV ingestion helper
+│   ├── ingestion.py                 # CSV ingestion helper
+│   ├── exports.py                   # Exports marts to CSV
+│   └── spark_transforms.py          # PySpark demo transform
 │
 ├── docker-compose.yml               # Docker services for Airflow + Postgres
 ├── requirements.txt                 # Python dependencies
@@ -103,7 +114,7 @@ take-home/
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/danishanis/ETL-HealthCare-Fund-Factoring.git
+git clone https://www.github.com/danishanis/ETL-HealthCare-Fund-Factoring.git
 cd ETL-HealthCare-Fund-Factoring
 ```
 
@@ -127,13 +138,16 @@ This will start:
 
 ### 4. Run the pipeline
 1. In the Airflow UI, enable the DAG **`factoring_etl`**.  
-2. Trigger a manual run (▶ button).  
+2. The DAG is scheduled to run **daily at 07:00 America/Toronto**.  
+   You can also trigger a manual run (▶ button).  
 3. Watch logs for each step:  
    - `bootstrap_db` → sets up schemas/tables.  
    - `load_*` → ingests raw CSVs.  
    - `transform_staging` → cleans/types data.  
    - `transform_core` → reconciles expected vs received cash.  
    - `transform_marts` → produces borrowing base, exceptions, audit.  
+   - `export_outputs` → writes final CSVs to `data/outputs/`.  
+   - `spark_bank_demo` → PySpark demo (parallel, safe branch).  
 
 ### 5. Validate results
 Connect to Postgres and check row counts:
@@ -145,6 +159,11 @@ docker compose exec postgres psql -U postgres -d warehouse -c "SELECT COUNT(*) F
 docker compose exec postgres psql -U postgres -d warehouse -c "SELECT * FROM marts.run_audit ORDER BY run_id DESC LIMIT 1;"
 ```
 
+Check exported CSVs on host:
+```bash
+ls -l data/outputs
+```
+
 ---
 
 ## ✅ Deliverables
@@ -154,13 +173,17 @@ docker compose exec postgres psql -U postgres -d warehouse -c "SELECT * FROM mar
 - **Reconciliation logic** with tolerance, short/over-pay handling, and exceptions.  
 - **Borrowing base calculation** with concentration and delinquency rules.  
 - **Audit logs** of every run.  
+- **Final CSV outputs** in `data/outputs/`.  
+- **PySpark integration** task demonstrating Spark ↔ Postgres in Airflow.  
 
 ---
 
-## ⚠️ Notes for Interviewers
+## ⚠️ Notes for Business Users
 
 - **Tolerance (Y%)**: 2%.  
 - **As-of date**: `min(today, last bank transaction date)`.  
 - **Over-payments**: flagged as misallocations.  
 - **Deposit splitting**: unmatched deposits remain flagged.  
 - **DB**: Postgres only, no DuckDB.  
+- **PySpark**: used in a safe, parallel demo task (`spark_bank_demo`) to show Spark integration.  
+- **Schedule**: daily at 07:00 Toronto time (EDT).  
