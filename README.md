@@ -1,10 +1,14 @@
 # Data Engineering Case Study - Factoring Fund ETL MVP
 
+![ETL DAG in Airflow UI](dag_graph.png)
+
 This project implements an **ETL pipeline** for a factoring fund that advances cash against future insurance receivables. The pipeline ingests insurer/broker commission statements and bank transaction exports, reconciles expected vs received cash, computes borrowing base availability per facility, and produces exception reports for monitoring delinquencies.  
 
 The entire workflow is orchestrated using **Apache Airflow** and persists data into a **Postgres warehouse**. Both services run in **Docker** for portability and reproducibility.
 
 ---
+
+
 
 ## 📖 Problem Background
 

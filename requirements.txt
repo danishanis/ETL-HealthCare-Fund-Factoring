@@ -9,7 +9,6 @@ pytest>=8.0
 great_expectations>=0.18
 loguru>=0.7
 apache-airflow
-sqlite3
 apache-airflow-providers-postgres==5.7.1
 rapidfuzz==3.9.6
--e .
+# -e .
