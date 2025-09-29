@@ -1,106 +1,131 @@
+-- Drop entire schemas if they exist (cassade to drop all dependent objects)
+DROP SCHEMA IF EXISTS raw CASCADE;
+DROP SCHEMA IF EXISTS stg CASCADE;
+DROP SCHEMA IF EXISTS core CASCADE;
+DROP SCHEMA IF EXISTS marts CASCADE;
+
 -- === Schemas ===
 CREATE SCHEMA IF NOT EXISTS raw;
 CREATE SCHEMA IF NOT EXISTS stg;
 CREATE SCHEMA IF NOT EXISTS core;
 CREATE SCHEMA IF NOT EXISTS marts;
 
--- === RAW TABLES (land as-is, types are TEXT for safety) ===
+-- RAW TABLES (land CSVs)
 DROP TABLE IF EXISTS raw.bank_transactions;
 CREATE TABLE raw.bank_transactions (
-    txn_id           SERIAL PRIMARY KEY,
-    txn_date         TEXT,
-    amount           TEXT,
-    description      TEXT
+    txn_id        TEXT PRIMARY KEY,
+    date      DATE,
+    amount        NUMERIC,
+    currency      TEXT,
+    description   TEXT,
+    account_id    TEXT
 );
 
 DROP TABLE IF EXISTS raw.policy_commissions;
 CREATE TABLE raw.policy_commissions (
-    policy_id        TEXT,
-    policy_number    TEXT,
-    insurer          TEXT,
-    expected_date    TEXT,
-    expected_amount  TEXT,
-    facility_id      TEXT
+    policy_id           TEXT,
+    facility_id         TEXT,
+    insurer             TEXT,
+    insured_name        TEXT,
+    policy_number       TEXT,
+    commission_due_date DATE,
+    commission_amount   NUMERIC,
+    written_date        DATE,
+    status              TEXT,
+    currency            TEXT,
+    expected_bank_memo  TEXT,
+    PRIMARY KEY (policy_id, commission_due_date)
 );
 
 DROP TABLE IF EXISTS raw.facilities;
 CREATE TABLE raw.facilities (
-    facility_id              TEXT PRIMARY KEY,
-    delinquency_cutoff_days  TEXT,
-    concentration_limit_pct  TEXT,
-    max_advance_rate         TEXT,
-    reserve_rate             TEXT,
-    current_outstanding      TEXT
+    facility_id             TEXT PRIMARY KEY,
+    counterparty_name       TEXT,
+    max_advance_rate        NUMERIC,
+    reserve_rate            NUMERIC,
+    concentration_limit_pct NUMERIC,
+    delinquency_cutoff_days INT,
+    current_outstanding     NUMERIC,
+    currency                TEXT
 );
 
--- === STG TABLES (typed/cleaned versions) ===
--- We’ll populate these later with transforms.
-DROP TABLE IF EXISTS stg.bank_txn_clean;
-CREATE TABLE stg.bank_txn_clean (
-    txn_id        INT PRIMARY KEY,
-    txn_date      DATE,
-    amount        NUMERIC,
+-- STG TABLES (typed/cleaned versions)
+DROP TABLE IF EXISTS stg.bank_transactions_clean;
+CREATE TABLE stg.bank_transactions_clean (
+    txn_id        TEXT PRIMARY KEY,
+    date      DATE,
+    amount        NUMERIC(18,2),
+    currency      TEXT,
     description   TEXT,
     insurer       TEXT,
-    policy_number TEXT
+    policy_number TEXT,
+    account_id    TEXT
 );
 
 DROP TABLE IF EXISTS stg.policy_commissions_clean;
 CREATE TABLE stg.policy_commissions_clean (
-    policy_id       TEXT,
-    policy_number   TEXT,
-    insurer         TEXT,
-    expected_date   DATE,
-    expected_amount NUMERIC,
-    facility_id     TEXT
+    policy_id           TEXT,
+    facility_id         TEXT,
+    insurer             TEXT,
+    insured_name        TEXT,
+    policy_number       TEXT,
+    commission_due_date DATE,
+    commission_amount   NUMERIC(18,2),
+    written_date        DATE,
+    status              TEXT,
+    currency            TEXT,
+    expected_bank_memo  TEXT,
+    PRIMARY KEY (policy_id, commission_due_date)
 );
 
 DROP TABLE IF EXISTS stg.facilities_clean;
 CREATE TABLE stg.facilities_clean (
-    facility_id              TEXT PRIMARY KEY,
-    delinquency_cutoff_days  INT,
-    concentration_limit_pct  NUMERIC,
-    max_advance_rate         NUMERIC,
-    reserve_rate             NUMERIC,
-    current_outstanding      NUMERIC
+    facility_id             TEXT PRIMARY KEY,
+    counterparty_name       TEXT,
+    max_advance_rate        NUMERIC(5,4),   -- rates like 0.85
+    reserve_rate            NUMERIC(5,4),
+    concentration_limit_pct NUMERIC(5,2),
+    delinquency_cutoff_days INT,
+    current_outstanding     NUMERIC(18,2),
+    currency                TEXT
 );
 
--- === CORE TABLES (final reconciled results) ===
+-- CORE TABLES (final reconciled results)
 DROP TABLE IF EXISTS core.reconciled_collections;
 CREATE TABLE core.reconciled_collections (
-    policy_id       TEXT,
-    expected_date   DATE,
-    expected_amount NUMERIC,
-    received_date   DATE,
-    received_amount NUMERIC,
-    shortfall       NUMERIC,
-    dpd             INT,
-    match_confidence NUMERIC
+    policy_id        TEXT,
+    commission_due_date DATE,
+    expected_amount  NUMERIC(18,2),
+    received_date    DATE,
+    received_amount  NUMERIC(18,2),
+    shortfall        NUMERIC(18,2),
+    dpd              INT,
+    match_confidence NUMERIC(5,2)
 );
 
--- === MARTS (final reporting outputs) ===
+-- MARTS (GOLD/final reporting outputs)
 DROP TABLE IF EXISTS marts.borrowing_base_summary;
 CREATE TABLE marts.borrowing_base_summary (
     facility_id         TEXT,
     as_of_date          DATE,
-    total_eligible      NUMERIC,
-    total_after_conc    NUMERIC,
-    advance             NUMERIC,
-    reserve             NUMERIC,
-    borrowing_base      NUMERIC,
-    headroom            NUMERIC
+    total_eligible      NUMERIC(18,2),
+    total_after_conc    NUMERIC(18,2),
+    advance             NUMERIC(18,2),
+    reserve             NUMERIC(18,2),
+    borrowing_base      NUMERIC(18,2),
+    headroom            NUMERIC(18,2)
 );
 
 DROP TABLE IF EXISTS marts.exceptions;
 CREATE TABLE marts.exceptions (
-    exception_type      TEXT,
-    policy_id           TEXT,
-    insurer             TEXT,
-    expected_date       DATE,
-    expected_amount     NUMERIC,
-    received_date       DATE,
-    received_amount     NUMERIC,
-    notes               TEXT
+    exception_type  TEXT,
+    policy_id       TEXT,
+    insurer         TEXT,
+    commission_due_date DATE,
+    expected_amount NUMERIC(18,2),
+    received_date   DATE,
+    received_amount NUMERIC(18,2),
+    notes           TEXT
 );
 
 DROP TABLE IF EXISTS marts.run_audit;
