@@ -1,8 +1,8 @@
 pyspark==3.5.1
-pandas<2.2
+pandas==1.5.3
 pyyaml>=6.0
-SQLAlchemy>=2.0
-psycopg2-binary>=2.9
+SQLAlchemy==1.4.52
+psycopg2-binary==2.9.9
 duckdb>=1.0.0
 prefect==2.14.10
 pytest>=8.0
@@ -10,5 +10,6 @@ great_expectations>=0.18
 loguru>=0.7
 apache-airflow
 sqlite3
-apache-airflow-providers-postgres
+apache-airflow-providers-postgres==5.7.1
+rapidfuzz==3.9.6
 -e .
