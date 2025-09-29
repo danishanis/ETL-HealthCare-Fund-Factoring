@@ -1,4 +1,4 @@
-txn_id,txn_date,amount,currency,description,account_id
+txn_id,date,amount,currency,description,account_id
 T10230,2025-01-02,-2846.71,CAD,PAYMENT 6AHF7,BA-001
 T10235,2025-01-06,-2563.41,CAD,PAYMENT OQW9J,BA-001
 T10250,2025-01-07,-389.5,CAD,PAYMENT 0RNUJ,BA-001
