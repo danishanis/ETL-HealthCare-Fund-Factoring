@@ -1,18 +1,25 @@
-# Minimal Spark-capable image for local PySpark (single container)
-FROM python:3.11-slim
+# Dockerfile for Airflow + PySpark + Java
+FROM apache/airflow:2.9.3-python3.10
 
-# Install Java for PySpark
-RUN apt-get update && apt-get install -y --no-install-recommends \    openjdk-17-jre-headless \    && rm -rf /var/lib/apt/lists/*
+USER root
 
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-ENV PATH="$JAVA_HOME/bin:${PATH}"
+# Install Java (works on arm64/amd64) and procps (ps command for Spark)
+RUN apt-get update && \
+    apt-get install -y openjdk-17-jdk procps && \
+    apt-get clean
 
-WORKDIR /app
+# Set JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+ENV PATH=$JAVA_HOME/bin:$PATH
 
+USER airflow
+
+# Install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-
-# Default command (override in docker-compose)
-CMD ["python", "-c", "print('Container ready. Override CMD to run flows.')"]
+# Copy project code
+COPY src /opt/airflow/src
+COPY airflow/dags /opt/airflow/dags
+COPY airflow/include /opt/airflow/include
+COPY data /opt/data
