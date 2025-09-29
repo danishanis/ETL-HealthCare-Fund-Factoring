@@ -26,6 +26,8 @@ WITH eligible AS (
     LEFT JOIN core.reconciled_collections rc
            ON pc.policy_id = rc.policy_id
           AND pc.commission_due_date = rc.commission_due_date
+    JOIN stg.facilities_clean f
+            ON pc.facility_id = f.facility_id
     WHERE (rc.received_date IS NULL OR rc.dpd <= f.delinquency_cutoff_days)
 )
 , eligible_sum AS (
