@@ -65,7 +65,12 @@ The pipeline follows a layered architecture:
 
 5. **PySpark integration**  
    - A demo Spark task (`spark_bank_demo`) reads from `raw.bank_transactions`, applies a trivial transform, and writes into `stg.bank_txn_spark_demo`.  
-   - This runs in parallel with the main DAG flow to safely demonstrate Spark–Airflow–Postgres integration without risk to the core pipeline.  
+   - This runs in parallel with the main DAG flow to safely demonstrate Spark–Airflow–Postgres integration without risk to the core pipeline. 
+
+6. **Findings & Insights**  
+   - 'Reconciliation' - clearly shows timing gaps (late collections) and mismatches.
+   - 'Borrowing base' - logic ensures facilities stay within advance & concentration limits.  
+   - 'Exceptions Report' - Provides transparency for audit teams (unmatched, late, short pay). 
 
 ---
 
@@ -74,6 +79,11 @@ The pipeline follows a layered architecture:
 ```
 take-home/
 │
+├── .astro/
+│   ├── config.yaml
+│   ├── dag_integrity_exceptions.txt
+│   ├── test_dag_integrity_default.py     
+|
 ├── airflow/
 │   ├── dags/
 │   │   ├── factoring_etl_dag.py     # Main Airflow DAG
@@ -85,12 +95,24 @@ take-home/
 │   │   └── 03_marts.sql             # Borrowing base + exceptions + audit
 │   └── logs/                        # Airflow logs (gitignored)
 │
+├── configurations/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── logmanager.py 
+|
 ├── data/input/
 │   ├── bank_transactions.csv
 │   ├── facilities.csv
 │   └── policy_commissions.csv
 │
-├── data/outputs/                    # Final exported CSVs (from marts)
+├── data/outputs/                      # Final exported CSVs (from marts)
+│   ├── borrowing_base_summary.csv
+│   ├── exceptions.csv
+│   └── reconciled_collections.csv
+│   └── run_audits.csv                      
+|
+├── db/init/
+│   ├── 01_create_dbs_and_roles.sql
 │
 ├── docs/
 │   └── factoring_etl_dag.png        # DAG graph screenshot from Airflow UI
@@ -103,8 +125,10 @@ take-home/
 │   ├── exports.py                   # Exports marts to CSV
 │   └── spark_transforms.py          # PySpark demo transform
 │
+├── Dockerfile
 ├── docker-compose.yml               # Docker services for Airflow + Postgres
 ├── requirements.txt                 # Python dependencies
+|── setup.py
 └── README.md                        # This document
 ```
 
